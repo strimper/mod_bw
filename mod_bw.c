@@ -59,6 +59,7 @@ Limitations  : This mod doesn't know how fast is the client really
 #define SHARED_FILENAME "logs/bwmod_runtime_status"
 
 /* Compatibility for ARP < 1 */
+/*
 #if (APR_MAJOR_VERSION < 1)
     #define apr_atomic_inc32 apr_atomic_inc
     #define apr_atomic_dec32 apr_atomic_dec
@@ -66,7 +67,7 @@ Limitations  : This mod doesn't know how fast is the client really
     #define apr_atomic_cas32 apr_atomic_cas
     #define apr_atomic_set32 apr_atomic_set
 #endif
-
+*/
 /* Enum types of "from address" */
 enum from_type {
     T_ALL,
@@ -481,7 +482,7 @@ static long get_bw_rate(request_rec * r, apr_array_header_t * a)
             return e[i].rate;
 
         case T_IP:
-            if (apr_ipsubnet_test(e[i].x.ip, r->connection->remote_addr)) {
+            if (apr_ipsubnet_test(e[i].x.ip, r->connection->client_addr)) {
                 return e[i].rate;
             }
             break;
@@ -564,7 +565,7 @@ static int get_maxconn(request_rec * r, apr_array_header_t * a)
             return e[i].max;
 
         case T_IP:
-            if (apr_ipsubnet_test(e[i].x.ip, r->connection->remote_addr)) {
+            if (apr_ipsubnet_test(e[i].x.ip, r->connection->client_addr)) {
                 return e[i].max;
             }
             break;
@@ -609,7 +610,7 @@ static int get_sid(request_rec * r, apr_array_header_t * a)
             return e[i].sid;
 
         case T_IP:
-            if (apr_ipsubnet_test(e[i].x.ip, r->connection->remote_addr)) {
+            if (apr_ipsubnet_test(e[i].x.ip, r->connection->client_addr)) {
                 return e[i].sid;
             }
             break;
