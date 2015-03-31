@@ -1,0 +1,18 @@
+
+v0.7 
+------------
+2005-08-29 :
+
+- Changed License to Apache Software License v2.0
+- Changed coded style. Using GNU indent.
+- Changed function name from is_filetype to match_ext
+- Removed check for "no configurations" (confid < 0)
+- Removed BandwidthDebug directive.
+- Removed simple allocation on Win32 platform. Using SHM now.
+- Removed no-limiting for error pages.
+- Added Support for APR > 0.9
+- Added Support for extra-large files (2G, 4G) with APR > 1
+- Borrowed code (in_domain and ip match) from mod_access)
+- IPV6 Support
+
+

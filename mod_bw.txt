@@ -1,0 +1,492 @@
+Apache2 - Mod_bw v0.7
+
+Author       : Ivan Barrera A. (Bruce)
+
+HomePage     : Http://Ivn.cl/apache & http://bwmod.sf.net
+
+Release Date : 01-09-2005
+
+Status       : Functional. Tested under medium and heavy load.
+
+License      : Licensed under the Apache Software License v2.0
+               It must be included as LICENSE in this package.
+
+Platform     : Linux/x86         (Tested with Fedora Core 4, Suse, etc)
+               FreeBSD/x86       (Tested on 5.2)
+               MacOS X/Ppc x86   (Tested on both platforms)
+               Solaris 8/sparc   (Some notes on compile)
+               Microsoft Windows (Win XP, Win2003. Others should work)
+
+Notes        : This is a stable version of mod_bw. It works fine with
+               almost any MPM (tested with WinNT/prefork/Worker MPM).
+
+Limitations  : This mod doesn't know how fast is the client really 
+               downloading a file, so it just divides the bw assigned
+               between the users.
+               MaxConnections works only for the given scope. (i.e , all 
+               will limit maxconnections from all,not per ip or user)
+
+
+  Especials thanks goes to the "Summer Of Code 2005" program of Google!
+ Chris DiBona and all the team, who were helping us out since the beggining.
+  Thanks to Ian Holsman and Paul Querna, Mentors from Apache Foundation.
+
+
+------------------------------------------------------------------------------
+
+Contents :
+
+1 .- Notices
+ 1.1 - Summer Of Code Program
+ 1.2 - ChangeLog and TODO
+
+2 .- Installing
+ 2.1 - Windows
+ 2.2 - Linux
+
+3 .- Getting it to Work, Directives
+ 3.1 - BandWidthModule
+ 3.2 - ForceBandWidthModule
+ 3.3 - BandWidth
+ 3.4 - MinBandWidth
+ 3.5 - LargeFileLimit
+ 3.6 - BandWidthPacket
+ 3.7 - BandWidthError
+ 3.8 - MaxConnection 
+
+4 .- Examples
+ 4.1 - Misc Examples
+
+5 .- FAQ
+
+------------------------------------------------------------------------------
+
+1.- Notices
+
+ 1.1 - Summer Of Code Program :
+
+   Google launch Summer Of Code 2005 program, to motivate the development of
+  open source software. Many students around the world signed on the program
+  in differents areas/projects. 
+   Mine has to do with Bandwidth limiting in current Apache webserver. The 
+  main idea behind the program, is to incentivate the development of quality
+  open source program, offering a grant in 
+
+------------------------------------------------------------------------------
+
+ 1.2 - ChangeLog & TODO :
+
+   This has been moved to the files ChangeLog and TODO. Available on the
+  packages and CVS at SourceForge.
+
+------------------------------------------------------------------------------
+
+2.- How To Install :
+
+ 2.1 - Windows
+
+   In Windows, you have to download the binary dll from the site (or compile
+  one yourself) that matches your apache version, and Install it under modules
+  on your apache tree. Then edit httpd.conf, and add the LoadModule sentence.
+  If there is no matching binary dll with your version of apache (the latest)
+  you can ask me to compile it for you. Post a message in the home site as a
+  feature request.
+
+  Example :
+
+    Download mod_bw-2.0.54.dll from the home site, to c:\apache2\modules
+    Edit httpd.conf, and add LoadModule bw_module modules/mod_bw-2.0.54.dll
+    Restart Apache.
+
+ 2.2 - Linux
+
+   Well.. (under *nix) you *have* to compile it..
+  It might sound scary, but it's easy. There is an easy way, and the hard way.
+  If the easy way doesn't work for you, use the hard way.
+
+  REQUIREMENTS :
+
+   You will need apache2 headers in the include path. In redhat/suse or others
+  this mean apache-devel or httpd-devel installed.
+   You also need support for SHM in your OS. Usually you will have this.
+
+ - Easy Way :
+
+   For this to work, you MUST have apxs (or apxs2) installed. You might need
+  to use it full path (i.e. /usr/sbin/apxs .....). Well, you have to do this :
+
+   apxs -i -a -c mod_bw.c
+   or
+   apxs2 -i -a -c mod_bw.c
+
+   This will bring out some stuff... nothing to worry (unless you see error)
+  If it says ok, then you are ready. Restart apache (service apache restart on
+  redhat, mandrake, and others... apachectl restart .. rcapache2 restart or... 
+  well, you should know)
+
+  Note On Solaris Users :
+
+   If you got problems compiling it on Solaris, remember to check you have 
+  libgcc correctly installed, and the ld_library_path set up correctly. 
+   I didnt, so i compiled this way :
+
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+   apxs -i -a -c mod_bw.c -L/usr/local/lib -lgcc_s
+               
+   And then started apache, and everything worked fine.
+
+  Note On SuSe Users :
+
+   You NEED to have installed apache2 header files (apache2-devel rpm).
+  Otherwise you'll get lots of include files error.
+
+ - Hard Way
+
+   If using the easy way, you turned to have some .o files.. you are almost
+  done... skip to the part of installing the module.
+   Back to the hard way..... you might notice that you dont have apxs,
+  dont know why (maybe the dog ate it). Well. try the following (and please
+  do it on a newly-fresh created directory for this purpose) :
+  (this does not necessarily work on all cases)
+
+    libtool --silent --mode=compile gcc  -g -O2 -pthread    -DLINUX=2 \
+        -D_REENTRANT -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_SVID_SOURCE \
+        -I/usr/include/httpd \
+        -I/usr/include/apr-0 -Wall -g\
+        -prefer-pic -c mod_bw.c && touch mod_bw.slo
+
+
+    libtool --silent --mode=link gcc  -g -O2 -pthread    -DLINUX=2 \
+        -D_REENTRANT -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_SVID_SOURCE \
+        -D_GNU_SOURCE -DAP_HAVE_DESIGNATED_INITIALIZER \
+        -I/usr/include/httpd \
+        -I/usr/include/apr-0 -Wall -g\
+        -export-dynamic -o mod_bw.la  -rpath /usr/lib/httpd/modules \
+        -module -avoid-version  mod_bw.lo
+
+    (this cleans some unneeded files)
+    rm -rf *.a *.la *.lo *.slo *.o *.loT
+    mv .libs/*.so .
+    rm -rf .libs
+
+    Note that you need to know where are your httpd and apr includes.
+    (dont ask me where they are.. you are supossed to know)
+    If this worked... we are good to install the module.
+
+   * Installing the module (hey.. this is part of the hard way)
+
+    Ok, either if the easy way didnt install the mod, or if you did the
+   hard way, now you must install the module by hand.
+    Is easy as copying the file (usually mod_bw.so) to the apache
+   modules directory (usually /etc/httpd/modules or 
+   /usr/local/libexec/apache2/) and then adding the following line at
+   httpd.conf (better of if you add it at the last part of all LoadModule
+   sentences) :
+
+    LoadModule bw_module mod_bw.so
+
+    Please, take a look at the other LoadModule sentences. You may need
+   to add a path before the .so file. 
+   (i.e LoadModule bw_module libexec/apache2/mod_bw.so)
+
+
+
+  If you didn't manage to get it installed, drop me a letter. But please
+ be sure you tried everything. Sometimes the simplest way, is the better.
+------------------------------------------------------------------------------
+
+3.- Getting it to Work :
+
+
+  Ok.. this is the most confusing part. (yeh, most of us think the installing
+ part is the hardest xD )
+
+  This mod, is able to limit bandwidth usage on every virtual host or
+ directory. htaccess files are not supported yet, cause i've been having some
+ serious segfaults when implementing it.
+
+ * Configuration Directives
+ *****************************************************************************
+
+ 3.1 - BandWidthModule [On|Off]
+
+    You need to set this to On, for the mod to work.. By default, the mod is
+   disabled, and wont limit anything.
+
+   Example :
+              BandWidthModule On
+
+ 3.2 - ForceBandWidthModule [On|Off]
+ 
+    By default, the mod wont catch every request.
+    If you enable it, every request will be processed by the mod.
+   
+   Example :
+              (normal use)
+              AddOutputFilterByType MOD_BW text/html text/plain
+
+              (enabling Force)
+              ForceBandWidthModule On
+ 
+
+ 3.3 - BandWidth [From] [bytes/s]
+
+    This takes 2 parameters. From is the origin of the connections. It could
+   be a full host, part of a domain, an ip address, a network mask (i.e
+   192.168.0.0/24 or 192.168.0.0/255.255.255.0) or all.
+    The second parameter indicates the total speed available to the Origin.
+    If speed is 0, there is no limit.
+
+   Example :
+            BandWidth localhost 10240
+            BandWidth 192.168.218.5 0
+
+            ( Order is relevant. First entries have precedence )
+
+ 3.4 - MinBandWidth [From] [bytes/s]
+
+    This takes 2 parameters. From is the origin of the connections. It could
+   be a full host, part of a domain, an ip address, a network mask (i.e
+   192.168.0.0/24 or 192.168.0.0/255.255.255.0) or all.
+    The second parameter indicates the minimun speed each client will have.
+   What does this mean ? If you have a total of 100kbytes speed, and you put
+   MinBandWidth at 50kbytes, it doesnt matter how many clients you have, all
+   of them will have at minimun 50kbytes of total speed to download.
+    If speed is 0, you will be using the default minimun (256 bytes/s).
+    There is a special value of -1. This value means that each client, will
+   have a top speed determined by the BandWidth directive. See the examples.
+
+   Examples :
+              BandWidth    all 102400
+              MinBandWidth all 50000
+ 
+             The example above, will have a top speed of 100kb for the 1º
+            client. If more clients come, it will be splitted accordingly but
+            everyone will have at least 50kb (even if you have 50 clients)
+
+              BandWidth    all 50000
+              MinBandWidth all -1
+
+             This example, makes everyone have 50kb as top speed.
+
+ 3.5 - LargeFileLimit [Type] [Minimum Size] [bytes/s]
+
+    Type, is the last part of a file, or * for all. You can use .tgz to match 
+   only tar-compressed files, .avi to match video files, or * to match all.
+    Minimum Size, is the size (in kbytes) of the file, to be matched. That way
+   you can match huge video files that hog your bandwidth.
+    The last parameter... is obvious. The speed allowed.
+
+   Example :
+             LargeFileLimit .avi 500 10240
+
+             This limits .avi files over (or equal to) 500kb to 10kbytes/s
+
+ 3.6 - BandWidthPacket [Size]
+
+    Probably you never need to touch this. It defaults to 8192 which is good
+   for almost any speed.
+    It must be a size between 1024 and 131072. A Small packet will cause the
+   top speed to be lower, and the mod using more time splitting. If you use
+   a Size too big, the mod will adjust it to lower speeds.
+
+ 3.7 - BandWidthError [Error]
+
+    This directives is useful to deliver a personalized error code.
+    At default, when maxconnections is reached, the mod will issue a 503 
+   HTTP_SERVICE_UNAVAILABLE code. For some users, it is annoying to have an
+   error message, and dont knowing why. You could use an ErrorDocument to 
+   point error 503 to a page explaining that you are under a heavy load of
+   connections, but sometimes 503 isn't issued by the mod.
+    So, with this directive, you can set the error code to return when
+   maxconnections is reached. You can use any error code between 300 and 599.
+   Please note, that some of the error codes are already used, so before using
+   any number, take a look to a list of the codes (search for http error codes
+   in google). 
+    When testing, i've used the error code 510, which hasn't been defined yet.
+
+    And Example, with Personalized Error Page :
+
+      ErrorDocument 510 /errors/maxconexceeded.html
+      BandWidthError 510
+
+    Note : Sometimes, the personalized page didn't appear. I'm not sure, but
+          in many cases, it got fixed, by making the page size over 1024bytes.
+           Anyways, if you need help using ErrorDocument, refer to the apache
+          Documentation.
+ 
+ 3.8 - MaxConnection [From] [Max]
+
+    This takes 2 parameters. From is the origin of the connections. It could
+   be a full host, part of a domain, an ip address, a network mask (i.e
+   192.168.0.0/24 or 192.168.0.0/255.255.255.0) or all.
+    The second parameter, is the max connections allowed from the origin. Any
+   connection over Max, will get a 503 Service Temporarily Unavailable
+
+    There is a catch. You NEED to have a BandWidth limit for the same origin.
+   It doesnt need to be a low limit. You can use an unlimited setting.
+    You might wonder why. It's because im using them same memory space of the
+   bandwidth limit, to count the connections, so i can save memory space.
+    If you dont put a BandWidth using the same origin, MaxConnections will be
+   ignored.
+
+   Example :
+              BandWidth all 0
+              MaxConnection all 20
+    or
+              BandWidth all 0
+              BandWidth 192.168.0.0/24 10240
+              MaxConnection all 20
+              MaxConnection 192.168.0.0/24 5
+
+
+  Please, rememeber that every speed, will depend mostly on your connection.
+ You cant get more speed if you dont have it.
+
+  Remember also.. if you dont follow the instructions, and get some weird 
+ results, recheck your config before sending me an email.
+
+------------------------------------------------------------------------------
+
+4.- Examples
+
+  4.1 - Misc examples
+
+    Limit every user to a max of 10Kb/s on a vhost :
+
+    <Virtualhost *>
+      BandwidthModule On
+      ForceBandWidthModule On
+      Bandwidth all 10240
+      MinBandwidth all -1
+      Servername www.example.com
+    </Virtualhost>
+
+
+    Limit al internal users (lan) to 1000 kb/s with a minimum of 50kb/s , and 
+  files greater than 500kb to 50kb/s.
+
+    <Virtualhost *>
+      BandwidthModule On
+      ForceBandWidthModule On
+      Bandwidth all 1024000
+      MinBandwidth all 50000
+      LargeFileLimit * 500 50000
+      Servername www.example.com
+    </Virtualhost>
+
+
+    Limit avi and mpg extensions to 20kb/s.
+
+    <Virtualhost *>
+      BandwidthModule On
+      ForceBandWidthModule On
+      LargeFileLimit .avi 1 20000
+      LargeFileLimit .mpg 1 20000
+      Servername www.example.com
+    </Virtualhost>
+
+
+    Using it the "right" way, with output filter by mime type (for text) 
+  to 5kb/s:
+    
+    <Virtualhost *>
+      BandwidthModule On
+      AddOutputFilterByType MOD_BW text/html text/plain
+      Bandwidth all 5000
+      Servername www.example.com 
+    </Virtualhost>
+
+
+    If you need help on doing more complex setup, you could post it in sf.net 
+  forums.
+
+------------------------------------------------------------------------------
+
+5.- FAQ
+
+(No particular order)
+
+1.- Why should i use mod_bw ?
+
+    If you want to restrict the top speed a site is able to use, or limit the
+  max connections allowed per site, or just to try the mod.
+    Some people told me, they use it primarily to stop small sites hogging 
+  all the bandwidth when serving video, images, or other content.
+
+2.- How do i ... ?
+
+    First, read the documentation. it is pretty straightforward to use.
+  If you can't make it work, or if you want to ask for a feature, visit the
+  home site, and post a request. Remember to read the documentation and the
+  faq. If the request is already posted, i'll just delete the duplicates.
+
+3.- What's the difference with mod_bwshare, mod_throttle, etc ?
+
+    The main difference, is that this mod, is aimed to the Apache 2 API.
+  Some other differences, is, how this mod works, and the directives it 
+  implements.
+    I took some ideas from other mods, as the shared memory implementation
+  (mod_bandwidth2 from Tim Verhoeven). Most of the directives, are in origin
+  from mod_bandiwdth for apache 1.
+
+4.- How does it works ?
+
+    The mod, will set a shared memory holding all of the configuration you
+  make. In this space, it will also, keep a "count" of the info currently
+  using (as current connections, bw used, time, and bytes sent).
+    When you assign a bw limit, the mod will "split" the data, and will send
+  it piece by piece, with a small delay between pieces. The delay will be
+  adjusted so at least 1 piece is sent in a second, thus eviting browser
+  timeout.
+    If there are two or more clients downloading from the same vhost, the
+  limit will be "splitted" too. So, if you have a bw limit of 16Kb and two
+  clients, each one will have 8Kb to download. You can also set a fixed 
+  download rate, so each client will have a fixed maximun download rate.
+    This is a simple explanation of how this works. Take a look at the code
+  if you want to know more about it.
+
+5.- Can you make it do ... ? 
+
+    Post a request for a feature in the home site. I'll respond there.
+
+6.- Can you make mod_bw work for ... ?
+
+    See question 5. Anyways, if i dont own (or have access) to the hardware
+  needed, i won't be able to help you.
+
+7.- I'm having some trouble in windows ... 
+
+    I cannot support windows in an official way. I do not own a licensed copy
+  of Windows, or Visual C.
+    Anyways, post your problem in the home site. 
+
+8.- The mod is not limiting certain Directory
+
+    Ok... first, read the documentation. Then the FAQ. If it isn't working,
+  then look if you have defined correctly the limits within that directory.
+    If you have a limit in a vhost, and inside the vhost, a directory with
+  another limit, a new context with the configs of the directory is created,
+  and only have the configurations you added there. 
+
+  In example :
+
+  <VirtualHost *>
+    BandWidthModule On
+    BandWidth all 16384
+    LargeFileLimit * 500 4096
+    <Directory />
+      LargeFileLimit * 100 1024
+    </Directory>
+
+  This wont limit Directory / to 16384. The Directory wont "inherit" the
+ settings from the vhost if you use some of the mod's directives.
+
+
+------------------------------------------------------------------------------
+  
+
+ Ivan Barrera A. 
+ Ivn Systems Software                                      -(Bruce@Ivn.cl)-
+
+
