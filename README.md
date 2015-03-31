@@ -19,8 +19,7 @@ The module has been built for Apache/2.4.9 (as shipped with Mac OS X 10.10.2).
 -------
 One way of using this module is to limit the bandwidth on a virtual host.
 
-The default configuration file can be found at this location:
-```/private/etc/apache2/extra/httpd-vhosts.conf```
+The default configuration file can be found at this location: ```/private/etc/apache2/extra/httpd-vhosts.conf```
 
 You may add the following lines to one of your VirtualHosts like this:
 
