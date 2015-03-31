@@ -1,6 +1,7 @@
 # mod_bw (for Mac OS X 10.10)
 Bandwidth Limiter for Apache httpd Server running on Apple Mac OS X 10.10 Yosemite
 
+Original version by [Ivan Barrera A. (Santiago, Chile)](http://bwmod.sourceforge.net)
 
 <strong>How to compile</strong>
 -------
